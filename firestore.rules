@@ -1,0 +1,532 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: /users/{userId}
+// Document ID: Firebase Auth UID
+// Fields:
+//   - uid: string (required, immutable, matches request.auth.uid)
+//   - email: string (required, 3..254 chars)
+//   - fullName: string (required, 1..100 chars)
+//   - role: string (required, immutable on update, 'business_owner' | 'customer')
+//   - photoURL: string (optional, <= 500 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Collection: /businesses/{businessId}
+// Document ID: Business ID (e.g., biz-slug)
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - ownerId: string (required, immutable on update, matches request.auth.uid)
+//   - name: string (required, 1..150 chars)
+//   - slug: string (required, 1..100 chars)
+//   - category: string (optional, <= 100 chars)
+//   - description: string (optional, <= 2000 chars)
+//   - phone: string (optional, <= 50 chars)
+//   - email: string (optional, <= 254 chars)
+//   - website: string (optional, <= 500 chars)
+//   - address: string (optional, <= 300 chars)
+//   - city: string (optional, <= 100 chars)
+//   - state: string (optional, <= 100 chars)
+//   - postalCode: string (optional, <= 50 chars)
+//   - country: string (optional, <= 100 chars)
+//   - mapsUrl: string (optional, <= 500 chars)
+//   - timezone: string (optional, <= 100 chars)
+//   - businessHours: map (optional)
+//   - onboardingCompleted: bool (optional)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/products/{productId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (required, immutable, matches businessId)
+//   - name: string (required, 1..150 chars)
+//   - price: number (required, >= 0 and <= 1000000)
+//   - description: string (optional, <= 2000 chars)
+//   - currency: string (optional, <= 10 chars)
+//   - category: string (optional, <= 100 chars)
+//   - available: bool (optional)
+//   - imageUrl: string (optional, <= 500 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/services/{serviceId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (required, immutable, matches businessId)
+//   - name: string (required, 1..150 chars)
+//   - price: number (required, >= 0 and <= 1000000)
+//   - durationMinutes: number (required, >= 1 and <= 1440)
+//   - description: string (optional, <= 2000 chars)
+//   - currency: string (optional, <= 10 chars)
+//   - available: bool (optional)
+//   - bookingRequirements: string (optional, <= 1000 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/faqs/{faqId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (optional, <= 100 chars)
+//   - question: string (required, 1..500 chars)
+//   - answer: string (required, 1..2000 chars)
+//   - category: string (optional, <= 100 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/knowledge/{knowledgeId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (optional, <= 100 chars)
+//   - title: string (required, 1..200 chars)
+//   - content: string (required, 1..10000 chars)
+//   - sourceType: string (optional, in ['manual', 'faq', 'policy', 'location', 'general'])
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/assistant/{configDoc}
+// Fields:
+//   - businessId: string (optional, <= 100 chars)
+//   - assistantName: string (required, 1..100 chars)
+//   - welcomeMessage: string (required, 1..1000 chars)
+//   - language: string (optional, <= 50 chars)
+//   - tone: string (optional, in ['professional', 'friendly', 'enthusiastic', 'concise', 'empathetic'])
+//   - voiceEnabled: bool (optional)
+//   - appointmentEnabled: bool (optional)
+//   - published: bool (optional)
+//   - customInstructions: string (optional, <= 2000 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/appointments/{appointmentId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (required, immutable, matches businessId)
+//   - customerName: string (required, 1..100 chars)
+//   - customerPhone: string (required, 1..30 chars)
+//   - customerEmail: string (optional, <= 254 chars)
+//   - serviceId: string (optional, <= 100 chars)
+//   - serviceName: string (optional, <= 150 chars)
+//   - startAt: string (required, 10..50 chars)
+//   - endAt: string (optional, <= 50 chars)
+//   - status: string (required, in ['pending', 'confirmed', 'cancelled', 'completed', 'rejected'])
+//   - notes: string (optional, <= 1000 chars)
+//   - ownerId: string (optional, <= 128 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/conversations/{conversationId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - businessId: string (required, immutable, matches businessId)
+//   - channel: string (optional, in ['chat', 'voice'])
+//   - status: string (optional, in ['active', 'closed', 'needs_human'])
+//   - startedAt: string (optional, <= 50 chars)
+//   - lastMessageAt: string (optional, <= 50 chars)
+//   - customerReference: string (optional, <= 100 chars)
+//   - previewMessage: string (optional, <= 500 chars)
+//   - createdAt: string (optional, <= 50 chars)
+//   - updatedAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//   - serverUpdatedAt: timestamp (optional)
+//
+// Subcollection: /businesses/{businessId}/conversations/{conversationId}/messages/{messageId}
+// Fields:
+//   - id: string (optional, <= 100 chars)
+//   - conversationId: string (optional, <= 100 chars)
+//   - sender: string (required, in ['user', 'assistant', 'system'])
+//   - content: string (required, 1..5000 chars)
+//   - timestamp: string (optional, <= 50 chars)
+//   - isVoice: bool (optional)
+//   - createdAt: string (optional, <= 50 chars)
+//   - serverCreatedAt: timestamp (optional)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isBusinessOwner(businessId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) ||
+        (data[field] is string && data[field].size() >= minLen && data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'fullName', 'role']) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'fullName', 'role', 'photoURL',
+          'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.role in ['business_owner', 'customer'] &&
+        isValidOptionalString(data, 'photoURL', 0, 500) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidBusiness(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'slug']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'slug', 'category', 'description',
+          'phone', 'email', 'website', 'address', 'city', 'state',
+          'postalCode', 'country', 'mapsUrl', 'timezone', 'businessHours',
+          'onboardingCompleted', 'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() <= 128 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+        data.slug is string && data.slug.size() >= 1 && data.slug.size() <= 100 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'category', 0, 100) &&
+        isValidOptionalString(data, 'description', 0, 2000) &&
+        isValidOptionalString(data, 'phone', 0, 50) &&
+        isValidOptionalString(data, 'email', 0, 254) &&
+        isValidOptionalString(data, 'website', 0, 500) &&
+        isValidOptionalString(data, 'address', 0, 300) &&
+        isValidOptionalString(data, 'city', 0, 100) &&
+        isValidOptionalString(data, 'state', 0, 100) &&
+        isValidOptionalString(data, 'postalCode', 0, 50) &&
+        isValidOptionalString(data, 'country', 0, 100) &&
+        isValidOptionalString(data, 'mapsUrl', 0, 500) &&
+        isValidOptionalString(data, 'timezone', 0, 100) &&
+        (!('businessHours' in data) || data.businessHours is map) &&
+        (!('onboardingCompleted' in data) || data.onboardingCompleted is bool) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['businessId', 'name', 'price']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'name', 'description', 'price', 'currency',
+          'category', 'available', 'imageUrl', 'createdAt', 'updatedAt',
+          'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 100 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'description', 0, 2000) &&
+        isValidOptionalString(data, 'currency', 0, 10) &&
+        isValidOptionalString(data, 'category', 0, 100) &&
+        (!('available' in data) || data.available is bool) &&
+        isValidOptionalString(data, 'imageUrl', 0, 500) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidService(data) {
+      return data.keys().hasAll(['businessId', 'name', 'price', 'durationMinutes']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'name', 'description', 'price', 'currency',
+          'durationMinutes', 'available', 'bookingRequirements', 'createdAt', 'updatedAt',
+          'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 100 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 1440 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'description', 0, 2000) &&
+        isValidOptionalString(data, 'currency', 0, 10) &&
+        (!('available' in data) || data.available is bool) &&
+        isValidOptionalString(data, 'bookingRequirements', 0, 1000) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidFAQ(data) {
+      return data.keys().hasAll(['question', 'answer']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'question', 'answer', 'category',
+          'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.question is string && data.question.size() >= 1 && data.question.size() <= 500 &&
+        data.answer is string && data.answer.size() >= 1 && data.answer.size() <= 2000 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'businessId', 0, 100) &&
+        isValidOptionalString(data, 'category', 0, 100) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidKnowledge(data) {
+      return data.keys().hasAll(['title', 'content']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'title', 'content', 'sourceType',
+          'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 10000 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'businessId', 0, 100) &&
+        (!('sourceType' in data) || data.sourceType in ['manual', 'faq', 'policy', 'location', 'general']) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidAssistantConfig(data) {
+      return data.keys().hasAll(['assistantName', 'welcomeMessage']) &&
+        data.keys().hasOnly([
+          'businessId', 'assistantName', 'welcomeMessage', 'language', 'tone',
+          'voiceEnabled', 'appointmentEnabled', 'published', 'customInstructions',
+          'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.assistantName is string && data.assistantName.size() >= 1 && data.assistantName.size() <= 100 &&
+        data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 1000 &&
+        isValidOptionalString(data, 'businessId', 0, 100) &&
+        isValidOptionalString(data, 'language', 0, 50) &&
+        (!('tone' in data) || data.tone in ['professional', 'friendly', 'enthusiastic', 'concise', 'empathetic']) &&
+        (!('voiceEnabled' in data) || data.voiceEnabled is bool) &&
+        (!('appointmentEnabled' in data) || data.appointmentEnabled is bool) &&
+        (!('published' in data) || data.published is bool) &&
+        isValidOptionalString(data, 'customInstructions', 0, 2000) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['businessId', 'customerName', 'customerPhone', 'startAt', 'status']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'customerName', 'customerEmail', 'customerPhone',
+          'serviceId', 'serviceName', 'startAt', 'endAt', 'status', 'notes',
+          'ownerId', 'createdAt', 'updatedAt', 'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 100 &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 100 &&
+        data.customerPhone is string && data.customerPhone.size() >= 1 && data.customerPhone.size() <= 30 &&
+        data.startAt is string && data.startAt.size() >= 10 && data.startAt.size() <= 50 &&
+        data.status in ['pending', 'confirmed', 'cancelled', 'completed', 'rejected'] &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'customerEmail', 0, 254) &&
+        isValidOptionalString(data, 'serviceId', 0, 100) &&
+        isValidOptionalString(data, 'serviceName', 0, 150) &&
+        isValidOptionalString(data, 'endAt', 0, 50) &&
+        isValidOptionalString(data, 'notes', 0, 1000) &&
+        isValidOptionalString(data, 'ownerId', 0, 128) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll(['businessId']) &&
+        data.keys().hasOnly([
+          'id', 'businessId', 'channel', 'status', 'startedAt', 'lastMessageAt',
+          'customerReference', 'previewMessage', 'createdAt', 'updatedAt',
+          'serverCreatedAt', 'serverUpdatedAt'
+        ]) &&
+        data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 100 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        (!('channel' in data) || data.channel in ['chat', 'voice']) &&
+        (!('status' in data) || data.status in ['active', 'closed', 'needs_human']) &&
+        isValidOptionalString(data, 'startedAt', 0, 50) &&
+        isValidOptionalString(data, 'lastMessageAt', 0, 50) &&
+        isValidOptionalString(data, 'customerReference', 0, 100) &&
+        isValidOptionalString(data, 'previewMessage', 0, 500) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        isValidOptionalString(data, 'updatedAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp) &&
+        (!('serverUpdatedAt' in data) || data.serverUpdatedAt is timestamp);
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['sender', 'content']) &&
+        data.keys().hasOnly([
+          'id', 'conversationId', 'sender', 'content', 'timestamp',
+          'isVoice', 'createdAt', 'serverCreatedAt'
+        ]) &&
+        data.sender in ['user', 'assistant', 'system'] &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 5000 &&
+        isValidOptionalString(data, 'id', 0, 100) &&
+        isValidOptionalString(data, 'conversationId', 0, 100) &&
+        isValidOptionalString(data, 'timestamp', 0, 50) &&
+        (!('isVoice' in data) || data.isVoice is bool) &&
+        isValidOptionalString(data, 'createdAt', 0, 50) &&
+        (!('serverCreatedAt' in data) || data.serverCreatedAt is timestamp);
+    }
+
+    // ===============================================================
+    // Rules Collections
+    // ===============================================================
+
+    // User profile collection
+    // 1. Strict single-user isolation: users can ONLY access their own document.
+    // 2. No public read or user enumeration is allowed.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        isValidUser(request.resource.data);
+      allow update: if isOwner(userId) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.role == resource.data.role &&
+        isValidUser(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Businesses collection
+    // 2. Business data modification restricted to verified owner.
+    // 3. Public read allowed for public business profile and public subcollections.
+    match /businesses/{businessId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        isValidBusiness(request.resource.data);
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId &&
+        isValidBusiness(request.resource.data);
+      allow delete: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid;
+
+      // Products subcollection (publicly readable, owner writable)
+      match /products/{productId} {
+        allow read: if true;
+        allow create: if isBusinessOwner(businessId) &&
+          request.resource.data.businessId == businessId &&
+          isValidProduct(request.resource.data);
+        allow update: if isBusinessOwner(businessId) &&
+          request.resource.data.businessId == resource.data.businessId &&
+          isValidProduct(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Services subcollection (publicly readable, owner writable)
+      match /services/{serviceId} {
+        allow read: if true;
+        allow create: if isBusinessOwner(businessId) &&
+          request.resource.data.businessId == businessId &&
+          isValidService(request.resource.data);
+        allow update: if isBusinessOwner(businessId) &&
+          request.resource.data.businessId == resource.data.businessId &&
+          isValidService(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // FAQs subcollection (publicly readable, owner writable)
+      match /faqs/{faqId} {
+        allow read: if true;
+        allow create: if isBusinessOwner(businessId) &&
+          (!('businessId' in request.resource.data) || request.resource.data.businessId == businessId) &&
+          isValidFAQ(request.resource.data);
+        allow update: if isBusinessOwner(businessId) &&
+          (!('businessId' in request.resource.data) || request.resource.data.businessId == resource.data.businessId) &&
+          isValidFAQ(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Assistant configuration subcollection (publicly readable, owner writable)
+      match /assistant/{configDoc} {
+        allow read: if true;
+        allow create: if isBusinessOwner(businessId) &&
+          isValidAssistantConfig(request.resource.data);
+        allow update: if isBusinessOwner(businessId) &&
+          isValidAssistantConfig(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Knowledge subcollection (internal business knowledge - owner only)
+      match /knowledge/{knowledgeId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if isBusinessOwner(businessId) &&
+          (!('businessId' in request.resource.data) || request.resource.data.businessId == businessId) &&
+          isValidKnowledge(request.resource.data);
+        allow update: if isBusinessOwner(businessId) &&
+          (!('businessId' in request.resource.data) || request.resource.data.businessId == resource.data.businessId) &&
+          isValidKnowledge(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      // Appointments subcollection
+      // 4. Customers can create appointments scoped to businessId.
+      //    Only verified business owner can read, update, or cancel.
+      match /appointments/{appointmentId} {
+        allow read: if isBusinessOwner(businessId) ||
+          (isAuthenticated() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid);
+        allow create: if request.resource.data.businessId == businessId &&
+          isValidAppointment(request.resource.data);
+        allow update: if (isBusinessOwner(businessId) ||
+          (isAuthenticated() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid)) &&
+          request.resource.data.businessId == resource.data.businessId &&
+          isValidAppointment(request.resource.data);
+        allow delete: if isBusinessOwner(businessId) ||
+          (isAuthenticated() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid);
+      }
+
+      // Conversations & Messages
+      // 5. Public assistant interactions can create/append messages.
+      //    Only the business owner can list/read conversations.
+      match /conversations/{conversationId} {
+        allow read: if isBusinessOwner(businessId);
+        allow create: if request.resource.data.businessId == businessId &&
+          isValidConversation(request.resource.data);
+        allow update: if request.resource.data.businessId == resource.data.businessId &&
+          isValidConversation(request.resource.data);
+        allow delete: if isBusinessOwner(businessId);
+
+        match /messages/{messageId} {
+          allow read: if isBusinessOwner(businessId);
+          allow create: if isValidMessage(request.resource.data);
+          allow update, delete: if isBusinessOwner(businessId);
+        }
+      }
+    }
+  }
+}
