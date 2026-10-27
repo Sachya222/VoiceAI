@@ -27,7 +27,7 @@ export function getFirebaseAdminApp() {
     } else {
       // Initialize with default application credentials or project ID
       return admin.initializeApp({
-        projectId: projectId || 'voiceai-demo',
+        projectId: projectId || 'voice-ai-851c3',
       });
     }
   } catch (err) {
